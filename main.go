@@ -18,17 +18,18 @@ import (
 var secret []byte
 
 //We declare a custom type User struct which reperesnts our users name and age
-type User struct {
+type Person struct {
 	Name string
 	Age int
+	Height float64
+	Hiarcolor string
 }
 
 func main() {
-	//we need to tell the encoding/gob package about the Go type 
-	//that we want to encode. We do this by passing "an instance" of the type
-	//to the gob.Register(). In this case we pass a pointer to an intiialized (but
-	//emtpy) instance of the User struct
-	gob.Register(&User{})
+	//we encode the type we craeted and we do this by passing "an instance" of the type
+	//to the gob.Register() method. In this case we pass a pointer to an intiialized
+	//instance of an empty Person struct
+	gob.Register(&Person{})
 
 	var err error
 	//lets Decode the random 64-character hex string to give us a slice containing
@@ -57,7 +58,7 @@ func main() {
 func setCookieHandler(w http.ResponseWriter, r *http.Request) {
 	//Initialize a User struct containing the data tha twe want to store in
 	//the cookie 
-	user := User{Name: "Alice", Age: 21}
+	user := Person{Name: "Kevin", Age: 23, Height: 5.9, Hiarcolor: "black"}
 
 	//Initialize a buffer to hold the Gob-encoded data
 	var buf bytes.Buffer
@@ -119,7 +120,7 @@ func getCookieHandler(w http.ResponseWriter, r *http.Request) {
 	 }
 	 
 	 //we create new User struct to store the decoded gob-encoded data.
-	 var user User
+	 var user Person
 
 	 //we create a new buffer and write the gob-encoded data to it
 	 //so that it can be decoded back into the user struct
@@ -135,8 +136,10 @@ func getCookieHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	 }
 
-	 //Print the user information in the response 
+	 //Print the person's information in the response 
 	 fmt.Fprintf(w, "Name: %q\n", user.Name)
 	 fmt.Fprintf(w, "Age: %d\n", user.Age)
+	 fmt.Fprintf(w, "Height: %v\n", user.Height)
+	 fmt.Fprintf(w, "Haircolor: %q\n", user.Hiarcolor)
 
-}
+	}
