@@ -55,10 +55,10 @@ func Read(r *http.Request, name string) (string, error) {
 	return string(value), nil
 }
 
-func WriteSigned(w http.ResponseWriter, cookie http.Cookie, secretKey []byte) error {
+func WriteSigned(w http.ResponseWriter, cookie http.Cookie, secret []byte) error {
 	//Calculate a HMAC signature of the cookie name and value, using SHA256 and 
 	//a secret key (which we will create in a moment)
-	mac := hmac.New(sha256.New, secretKey)
+	mac := hmac.New(sha256.New, secret)
 	mac.Write([]byte(cookie.Name))
 	mac.Write([]byte(cookie.Value))
 	signature := mac.Sum(nil)
@@ -72,7 +72,7 @@ func WriteSigned(w http.ResponseWriter, cookie http.Cookie, secretKey []byte) er
 
 }
 
-func ReadSigned(r *http.Request, name string, secretKey []byte) (string, error) {
+func ReadSigned(r *http.Request, name string, secret []byte) (string, error) {
 	//Read in the signed value from the cookie. This should be in the fomrat 
 	// "{signature}{original value}"
 	signedValue, err := Read(r, name)
@@ -94,7 +94,7 @@ func ReadSigned(r *http.Request, name string, secretKey []byte) (string, error) 
 	value := signedValue[sha256.Size:]
 
 	//Recalculate the HMAC signature of the cookie name and original value. 
-	mac := hmac.New(sha256.New, secretKey)
+	mac := hmac.New(sha256.New, secret)
 	mac.Write([]byte(name))
 	mac.Write([]byte(value))
 	expectedsignature := mac.Sum(nil)
@@ -110,9 +110,9 @@ func ReadSigned(r *http.Request, name string, secretKey []byte) (string, error) 
 	return value, nil 
 }
 
-func WriteEncrypted(w http.ResponseWriter, cookie http.Cookie, secretKey []byte) error {
-	//Create a new AES ciper block from the secret key for encryption
-	block, err  := aes.NewCipher(secretKey)
+func WriteEncrypted(w http.ResponseWriter, cookie http.Cookie, secret []byte) error {
+	//Create a new AES ciper block from the secret key 
+	block, err  := aes.NewCipher(secret)
 	if err != nil {
 		return err
 	}
@@ -150,15 +150,15 @@ func WriteEncrypted(w http.ResponseWriter, cookie http.Cookie, secretKey []byte)
 	return Write(w, &cookie)
 }
 
-func ReadEncrypted(r *http.Request, name string, secretKey []byte) (string, error) {
+func ReadEncrypted(r *http.Request, name string, secret []byte) (string, error) {
 	//we read the encrypted value from the cookie as normal 
 	encrypedValue, err := Read(r, name)
 	if err != nil {
 		return "", err
 	}
 
-	//we create a new AES cipher block from the secret key for decryption
-	block, err  := aes.NewCipher(secretKey)
+	//we create a new AES cipher block form the secret key 
+	block, err  := aes.NewCipher(secret)
 	if err != nil {
 		return "", err
 	}
@@ -169,29 +169,29 @@ func ReadEncrypted(r *http.Request, name string, secretKey []byte) (string, erro
 		return "", err
 	}
 
-	//now we Get the nonce size for the GCM
+	//now we Get the nonce size
 	nonceSize := aesGCM.NonceSize()
 
 	//now to avoid a potential 'index out of range' panic in the next step, we
-	//check that the length of the encrypted value is at least the size of the nonce 
+	//check that the length of the encrypted value is at least the nonce 
+	//size
 	if len(encrypedValue) < nonceSize {
 		return "", ErrInvalidValue
 	}
 
 	//We now split aparte the nonce from the actual entcryped data
-	//so we split the nonsize bytes for nonce and the rest of the bytes
-	//for the ciphertext
 	nonce := encrypedValue[:nonceSize]
 	ciphertext := encrypedValue[nonceSize:]
 
-	//Now we Use aesGCM.Open() method to decrypt and authenticate the data.
+	//Now we Use aesGCM.Open() to decrypt and authenticate the data. if this fails
+	//we return an ErrinvalidValue error
 	plaintext, err := aesGCM.Open(nil, []byte(nonce), []byte(ciphertext), nil)
 	if err != nil {
 		return "", ErrInvalidValue
 	}
 
 	//Now the plaintext value is in the format "{cookie name}:{cookie value}" We
-	//now use the strings.Cut() to split into cookie name and cookie value
+	//now use the strings.Cut() to split it on the first ":" character
 	expectedName, value, ok := strings.Cut(string(plaintext), ":")
 	if !ok {
 		return "", ErrInvalidValue
