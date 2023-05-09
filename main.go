@@ -15,7 +15,7 @@ var secretKey []byte
 func main() {
 	var err error
 	//lets Decode the random 64-character hex string to give us a slice containing
-	//32 random bytes. we 'hardcoded this hex string but in a
+	//32 random bytes. For simplicity, Ive hardcoded this hex string but in a
 	//real application you should read it in at runtime from a command line
 	//flat or enviroment variable 
 	secretKey, err = hex.DecodeString("13d6b4dff8f84a10851021ec8608f814570d562c92fe6b5ec4c9f595bcb3234b")
@@ -42,7 +42,7 @@ func setCookieHandler(w http.ResponseWriter, r *http.Request) {
 	//non-default attributes
 	cookie := http.Cookie{
 		Name: "exampleCookie",
-		Value: "howdy!苹果",
+		Value: "Hello Zoë!",
 		Path: "/",
 		MaxAge: 3600,
 		HttpOnly: true,
@@ -61,7 +61,7 @@ func setCookieHandler(w http.ResponseWriter, r *http.Request) {
 
 	//We use the WriteSigned() function we created to pass in teh secret key as
 	//the final argument
-	err := cookies.WriteSigned(w, cookie, secretKey)
+	err := cookies.WriteEncrypted(w, cookie, secretKey)
 	if err != nil {
 		log.Print(err)
 		http.Error(w, "server error", http.StatusInternalServerError)
@@ -69,7 +69,7 @@ func setCookieHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//write a HTTP response as normal
-	w.Write([]byte("cookie set"))
+	w.Write([]byte("cookie set!"))
 
 }
 
@@ -81,7 +81,7 @@ func getCookieHandler(w http.ResponseWriter, r *http.Request) {
 
 	 //we Use the ReadSigned() fucnion we created to pass in the secret key as the 
 	 //final argument
-	 value, err := cookies.ReadSigned(r, "exampleCookie", secretKey)
+	 value, err := cookies.ReadEncrypted(r, "exampleCookie", secretKey)
 	 if err != nil {
 		switch {
 		case errors.Is(err, http.ErrNoCookie):
